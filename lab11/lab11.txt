@@ -1,0 +1,56 @@
+CREATE TABLE IF NOT EXISTS phonebook (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(100),
+    phone_number VARCHAR(20)
+);
+
+-- Функция поиска
+CREATE OR REPLACE FUNCTION search_by_pattern(pattern TEXT)
+RETURNS TABLE(id INT, first_name TEXT, phone_number TEXT)
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT p.id, p.first_name, p.phone_number
+    FROM phonebook p
+    WHERE p.first_name ILIKE '%' || pattern || '%'
+       OR p.phone_number ILIKE '%' || pattern || '%';
+END;
+$$ LANGUAGE plpgsql;
+
+-- Процедура вставки или обновления
+CREATE OR REPLACE PROCEDURE insert_or_update_user(p_name TEXT, p_phone TEXT)
+AS $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM phonebook WHERE first_name = p_name) THEN
+        UPDATE phonebook SET phone_number = p_phone WHERE first_name = p_name;
+    ELSE
+        INSERT INTO phonebook(first_name, phone_number) VALUES(p_name, p_phone);
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Процедура удаления
+CREATE OR REPLACE PROCEDURE delete_user(p_name TEXT DEFAULT NULL, p_phone TEXT DEFAULT NULL)
+AS $$
+BEGIN
+    DELETE FROM phonebook
+    WHERE (first_name = p_name AND p_name IS NOT NULL)
+       OR (phone_number = p_phone AND p_phone IS NOT NULL);
+END;
+$$ LANGUAGE plpgsql;
+
+DROP FUNCTION IF EXISTS get_all_users();
+
+-- Проверка всех пользователей
+CREATE OR REPLACE FUNCTION get_all_users()
+RETURNS TABLE(
+    id INT,
+    first_name VARCHAR(100),
+    phone_number VARCHAR(20)
+)
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT * FROM phonebook ORDER BY id;
+END;
+$$ LANGUAGE plpgsql;
